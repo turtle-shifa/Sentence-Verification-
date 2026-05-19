@@ -12,7 +12,7 @@
         .label { font-weight: bold; color: #555; display: block; margin-top: 15px; font-size: 0.85em; text-transform: uppercase; }
         .original-label { color: #e67e22; font-weight: bold; margin-bottom: 10px; display: block; }
         .text { margin: 5px 0 15px; font-size: 1.1em; }
-        .btn-group { display: flex; gap: 8px; margin-top: 5px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
         button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
         button:hover { opacity: 0.8; }
         .q-correct { background-color: var(--accent); }
@@ -74,15 +74,23 @@
     window.resetAndLoad = async () => {
         currentPage = 0;
         const category = document.getElementById('category-select').value;
-        const snapshot = await getDocs(collection(db, category));
-        allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.id - b.id);
-        renderPage();
+        const container = document.getElementById('sentence-container');
+        container.innerHTML = "Loading...";
+        try {
+            const snapshot = await getDocs(collection(db, category));
+            allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.id - b.id);
+            renderPage();
+        } catch (e) { container.innerHTML = "Error loading data."; console.error(e); }
     };
 
     function renderPage() {
         const container = document.getElementById('sentence-container');
         container.innerHTML = "";
-        allDocs.slice(currentPage*itemsPerPage, (currentPage+1)*itemsPerPage).forEach(data => {
+        const pageItems = allDocs.slice(currentPage*itemsPerPage, (currentPage+1)*itemsPerPage);
+        
+        if (pageItems.length === 0) container.innerHTML = "No sentences found in this category.";
+
+        pageItems.forEach(data => {
             const div = document.createElement('div');
             div.className = 'card';
             div.innerHTML = `
@@ -109,25 +117,24 @@
         document.getElementById('prev-btn').disabled = currentPage === 0;
         document.getElementById('next-btn').disabled = (currentPage + 1) * itemsPerPage >= allDocs.length;
     }
-    
+
     window.submitVote = async (docId, quality, sentiment) => {
         const category = document.getElementById('category-select').value;
-        console.log("Saving to collection:", category); // এটি কনসোলে চেক করুন
         try {
             await updateDoc(doc(db, category, docId), {
                 votes: arrayUnion({ 
                     user: sessionStorage.getItem("voterName"), 
                     quality: quality, 
-                    sentiment: sentiment, 
+                    sentiment: sentiment,
                     time: new Date().toISOString() 
                 })
             });
             alert("Vote recorded successfully!");
         } catch (e) { 
-            console.error("Full Error:", e); // এরর ডিটেইলস এখানে দেখতে পাবেন
-            alert("Error recording vote: " + e.message); 
-    }
-};
+            console.error(e);
+            alert("Error recording vote. Check console for details."); 
+        }
+    };
 
     window.changePage = (dir) => { currentPage += dir; renderPage(); window.scrollTo(0,0); };
     resetAndLoad();
