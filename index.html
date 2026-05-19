@@ -69,6 +69,7 @@
         if (!sessionStorage.getItem("voterName")) {
             sessionStorage.setItem("voterName", prompt("Please enter your name:") || "Anonymous");
         }
+        resetAndLoad();
     };
 
     window.resetAndLoad = async () => {
@@ -78,7 +79,7 @@
         container.innerHTML = "Loading...";
         try {
             const snapshot = await getDocs(collection(db, category));
-            allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.id - b.id);
+            allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderPage();
         } catch (e) { container.innerHTML = "Error loading data."; console.error(e); }
     };
@@ -88,7 +89,7 @@
         container.innerHTML = "";
         const pageItems = allDocs.slice(currentPage*itemsPerPage, (currentPage+1)*itemsPerPage);
         
-        if (pageItems.length === 0) container.innerHTML = "No sentences found in this category.";
+        if (pageItems.length === 0) container.innerHTML = "No data found.";
 
         pageItems.forEach(data => {
             const div = document.createElement('div');
@@ -114,14 +115,14 @@
             container.appendChild(div);
         });
         document.getElementById('page-info').innerText = `Page ${currentPage + 1}`;
-        document.getElementById('prev-btn').disabled = currentPage === 0;
-        document.getElementById('next-btn').disabled = (currentPage + 1) * itemsPerPage >= allDocs.length;
     }
 
     window.submitVote = async (docId, quality, sentiment) => {
         const category = document.getElementById('category-select').value;
         try {
-            await updateDoc(doc(db, category, docId), {
+            // Firestore-এর নির্দিষ্ট ডকুমেন্ট রেফারেন্স ব্যবহার করা হচ্ছে
+            const docRef = doc(db, category, docId);
+            await updateDoc(docRef, {
                 votes: arrayUnion({ 
                     user: sessionStorage.getItem("voterName"), 
                     quality: quality, 
@@ -132,12 +133,11 @@
             alert("Vote recorded successfully!");
         } catch (e) { 
             console.error(e);
-            alert("Error recording vote. Check console for details."); 
+            alert("Error: Ensure your Firestore Rules are set to 'allow read, write: if true;'"); 
         }
     };
 
     window.changePage = (dir) => { currentPage += dir; renderPage(); window.scrollTo(0,0); };
-    resetAndLoad();
 </script>
 </body>
 </html>
