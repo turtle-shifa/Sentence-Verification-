@@ -109,21 +109,25 @@
         document.getElementById('prev-btn').disabled = currentPage === 0;
         document.getElementById('next-btn').disabled = (currentPage + 1) * itemsPerPage >= allDocs.length;
     }
-
+    
     window.submitVote = async (docId, quality, sentiment) => {
         const category = document.getElementById('category-select').value;
+        console.log("Saving to collection:", category); // এটি কনসোলে চেক করুন
         try {
             await updateDoc(doc(db, category, docId), {
                 votes: arrayUnion({ 
                     user: sessionStorage.getItem("voterName"), 
                     quality: quality, 
-                    sentiment: sentiment, // এখানে এখন 1, 0, বা 2 যাবে
+                    sentiment: sentiment, 
                     time: new Date().toISOString() 
                 })
             });
             alert("Vote recorded successfully!");
-        } catch (e) { alert("Error recording vote."); }
-    };
+        } catch (e) { 
+            console.error("Full Error:", e); // এরর ডিটেইলস এখানে দেখতে পাবেন
+            alert("Error recording vote: " + e.message); 
+    }
+};
 
     window.changePage = (dir) => { currentPage += dir; renderPage(); window.scrollTo(0,0); };
     resetAndLoad();
